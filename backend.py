@@ -1,100 +1,115 @@
-import pymongo, os, stripe
-client=pymongo.MongoClient("mongodb+srv://gary:gary1217@atlascluster.d0ukjd8.mongodb.net/")
-db=client.backend
-print("success")
-
-from flask import Flask, request, jsonify, redirect, session
+import os, stripe, re, time
+from datetime import datetime
+from flask import Flask, request, jsonify
 from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
+from mongoDB import get_user_collection, user_find  # 從 mongoDB.py 導入
+from func import create_uuid, stripe_pay
+
 
 app = Flask(__name__)
+collection=get_user_collection()
+bcrypt=Bcrypt(app)
+app.config["JWT_SECRET_KEY"] = "my_screct_key"
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 86400   #24hr
+app.config["JWT_BLACKLIST_ENABLED"] = True
+app.config["JWT_BLACKLIST_TOKEN_CHECKS"] = ["access"]
+jwt = JWTManager(app)
+blacklist = set()
+
+# 初始化限流 IP限制請求頻率
+limiter=Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["1 per minute"]
+)
+def is_valid_email(email):
+    email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"  #check email 格式是否正確
+    return re.match(email_regex, email) is not None
+
+def is_valid_birth(birth):
+    if not re.match(r"^\d{8}$", birth):  #check birth格式、正確日期
+        return False
+    
+    try:
+        birth_date=datetime.strptime(birth, "%Y%m%d")
+        if birth_date > datetime.now():
+            return False
+    except ValueError:
+        return False
+    return True
+
 
 @app.route("/sign_up", methods=["POST"])
+@limiter.limit("1 per minute")
 def sign_up():
-    email=request.form.get["email"]   #目前考慮email or LINE 連動登入
-    password=request.form.get["password"]   #在研究之前先用個password先擋一下
+    email=request.json.get("email")   #目前考慮email or LINE 連動登入
+    password=request.json.get("password")
+    birth=request.json.get("birth")
 
-    collection=db.user_id
-    result=collection.find_one({
-        "email":email
-    })
-    if result !=None:
-        return redirect("/error?msg=信箱已經被註冊")
-    collection.insert_one({
-        "email":email,
+    if not email or not password or not birth:
+        return jsonify({"error": "Missing fields"}), 400
+    
+    # 檢查信箱是否已經被註冊
+    if collection.find_one({"email": email}):
+        return jsonify({"error": "Email is already registered"}), 400
+    
+    if not is_valid_email(email):
+        return jsonify({"error":"email format error"}), 400
+    
+    if not is_valid_birth(birth):
+        return jsonify({"error":"birth format error is YYYYMMDD and not exceed today"}), 400
+    
+    #加密密碼
+    hashed_password=bcrypt.generate_password_hash(password).decode("utf-8")
+    
+    uid=create_uuid()
+    try:
+        collection.insert_one({
+            "_id":uid,
+            "email":email,
+            "password":hashed_password,
+            "birth":birth
+        })
+        return jsonify({"_id":uid, "email":email, "message":"User created successfully"}), 201
+    except Exception as e:
+        return jsonify({"messag":"Created Fail"})
 
-    })
-    return redirect("/success=註冊成功")
-
-
-app.config["JWT_SECRET_KEY"] = "my_screct_key"  #待驗證
-bcrypt = Bcrypt(app)
-jwt = JWTManager(app)
 @app.route("/login", methods=["POST"])
 def login():
     data=request.get_json()
     email = data.get('email')
     password = data.get('password')
-    # email=request.form["email"]
-    # password=request.form["password"]
-    collection=db.user_id
-
-    result=collection.find_one({
-        "$and":[
-            {"email":email},
-            {"password":password}
-        ]
-    })
-    # 驗證輸入
-    if not email or not password:
-        return jsonify({"message": "請輸入電子郵件和密碼"}), 400
 
     # 檢查用戶是否存在
-    user = next((u for u in db.user_id if u['email'] == email), None)
+    user = next((u for u in user_find() if u['email'] == email), None)
     if not user or not bcrypt.check_password_hash(user['password'], password):
         return jsonify({"message": "電子郵件不存在或密碼錯誤"}), 401
         
     # 生成 JWT
-    token = create_access_token(identity={"id": user["id"], "email": user["email"]})
-    return jsonify({"message": "登入成功", "token": token})
-    # if result==None:
-    #     return redirect("/error?msg=帳號密碼輸入錯誤")
-    # session["email"]=result["email"]
-    # return redirect("/success=登入成功")
+    token = create_access_token(identity=user["email"])
+    return jsonify({"message": "登入成功", "token": token}), 200
+    
 
 
-@app.route("/protected")
+@app.route("/protected", methods=["GET"])
+@jwt_required()
 def protected():
     current_user = get_jwt_identity()
-    return jsonify({"message": "歡迎進入保護區域", "user": current_user})
+    return jsonify({"message": "測試確定帶入TOKEN登入", "user": current_user}), 200
+    
+@app.route("/logOut", methods=["POST"])
+@jwt_required()
+def logOut():
+    jti=get_jwt()["jti"]
+    blacklist.add(jti)
+    return jsonify({"message":"Logout successful"}),200
 
-
-@app.route("/signOut")
-def signOut():
-    del session["email"]
-    return redirect("/success=完成登出")
-
-@app.route("/")
-def find():
-    return redirect("/123")
-
-stripe.api_key = "sk_test_51QBrlCByxTEIQfBXCEuz9gYnoZD53sOZR80clSPblmSW3MbtmEsM5C7AvFK4nEPyuKpRFiwCFXwhlQEwnvwwVlpV00dLCqWczC"
-@app.route("/create_stripe_pay")
+@app.route("/create_stripe_pay", methods=["POST"])
 def create_stripe_pay():
-    try:
-        data = request.json
-        amount = int(data["amount"]) *100
-
-        payment_intent=stripe.PaymentIntent.create(
-            amount=amount,
-            currency="twd",
-            payment_method="manual",
-            confirm=True,
-            return_url="http://localhost:4242/success"
-        )
-        return jsonify(payment_intent)    # 返回JSON
-    except Exception as e:
-        return jsonify(error=str(e)),403   # 如果創建支付時發生錯誤，返回錯誤訊息
+    return stripe_pay()
 
 
 
