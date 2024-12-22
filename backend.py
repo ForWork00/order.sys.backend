@@ -40,7 +40,9 @@ def is_valid_birth(birth):
     except ValueError:
         return False
     return True
-
+@app.route('/')
+def home():
+    return "Hello, World"
 
 @app.route("/sign_up", methods=["POST"])
 @limiter.limit("1 per minute")
@@ -136,8 +138,6 @@ def webhook():
         # Step 2: 安裝依賴
         subprocess.run(["pip3", "install", "-r", requirements_file], check=True)
 
-        # Step 3: 刷新頁面
-        subprocess.run(["pythonanywhere-webapp", "reload", reload_command], check=True)
 
         return jsonify({"message": "Update successful!"}), 200
     except Exception as e:
