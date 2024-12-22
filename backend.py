@@ -1,4 +1,4 @@
-import os, stripe, re, time
+import os, stripe, re, time, subprocess
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_bcrypt import Bcrypt
@@ -111,7 +111,37 @@ def logOut():
 def create_stripe_pay():
     return stripe_pay()
 
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    # 驗證私鑰
+    secret = request.headers.get("X-Webhook-Secret")
+    WEBHOOK_SECRET = os.getenv("TOKEN")
+    USERNAME = os.getenv("USERNAME")
+    
+    if not WEBHOOK_SECRET or not USERNAME:
+        return jsonify({"error": "Environment variables missing"}), 500
 
+    if secret != WEBHOOK_SECRET:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # 從GitHub上拉取main代碼
+    try:
+        project_dir = f"/home/{USERNAME}/order.sys.backend"  # 使用格式化字符串
+        requirements_file = os.path.join(project_dir, "requirements.txt")
+        reload_command = f"{USERNAME}.pythonanywhere.com"
+
+        # Step 1: 拉取代碼
+        subprocess.run(["git", "-C", project_dir, "pull"], check=True)
+
+        # Step 2: 安裝依賴
+        subprocess.run(["pip3", "install", "-r", requirements_file], check=True)
+
+        # Step 3: 刷新頁面
+        subprocess.run(["pythonanywhere-webapp", "reload", reload_command], check=True)
+
+        return jsonify({"message": "Update successful!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
