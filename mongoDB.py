@@ -18,10 +18,27 @@ if not database_name:
 client = MongoClient(mongoDB_url)
 db = client[database_name]
 
-
+# 使用者資訊
+# ----------------------------------------------------
 def get_user_collection():
-    return db["Users"]  # 返回特定的集合]
+    """取得 Users 集合"""
+    return db["Users"]
 
 def user_find():
-    return db.Users.find()
+    """查詢所有使用者資訊"""
+    return list(get_user_collection().find())
+
+# 訂單系統
+# -----------------------------------------------------
+def get_order_collection():
+    """取得 Orders 集合"""
+    return db["Orders"]
+
+
+# 菜單系統
+# ------------------------------------------------------
+def get_menu_collection():
+    """取得 Menu 集合"""
+    return db["Menu"]
+
 
