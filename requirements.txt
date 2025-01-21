@@ -84,6 +84,8 @@ datashader @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs
 debugpy @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/debugpy_1699253073094/work
 decorator @ file:///opt/conda/conda-bld/decorator_1643638310831/work
 defusedxml @ file:///tmp/build/80754af9/defusedxml_1615228127516/work
+click==8.1.7
+colorama==0.4.6
 Deprecated==1.2.15
 diff-match-patch @ file:///Users/ktietz/demo/mc3/conda-bld/diff-match-patch_1630511840874/work
 dill @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_28zwy_olqk/croot/dill_1715094676263/work
@@ -360,6 +362,7 @@ traitlets @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_
 truststore @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/truststore_1701805928787/work
 Twisted @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_c4spem5kwe/croot/twisted_1708702820544/work
 typer @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/typer_1699241721720/work
+timedelta==2020.12.3
 typing_extensions==4.12.2
 tzdata @ file:///croot/python-tzdata_1690578112552/work
 uc-micro-py @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/uc-micro-py_1699250544885/work
