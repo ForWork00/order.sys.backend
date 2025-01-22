@@ -26,11 +26,11 @@ jwt = JWTManager(app)
 blacklist = set()
 
 # 初始化限流 IP限制請求頻率
-# limiter=Limiter(
-#     get_remote_address,
-#     app=app,
-#     default_limits=["1 per minute"]
-# )
+limiter=Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["1 per minute"]
+)
 def is_valid_email(email):
     email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"  #check email 格式是否正確
     return re.match(email_regex, email) is not None
