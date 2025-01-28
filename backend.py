@@ -11,9 +11,11 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from mongoDB import get_user_collection, user_find, create_date_id, get_revenues, get_expenses, insert_expense, del_all_coll, get_order_collection, get_menu_collection # 從 mongoDB.py 導入
 from func import create_uuid, generate_trend_chart, export_to_excel, process_data, total, generate_order_id, upload_image_to_imgur
 from Pay import stripe_pay
+from flask_cors import CORS
 
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 collection=get_user_collection()
 order_collection = get_order_collection()
 menu_collection = get_menu_collection()
