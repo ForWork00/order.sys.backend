@@ -11,6 +11,7 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from mongoDB import get_user_collection, user_find, create_date_id, get_revenues, get_expenses, insert_expense, del_all_coll, get_order_collection, get_menu_collection # 從 mongoDB.py 導入
 from func import create_uuid, generate_trend_chart, export_to_excel, process_data, total, generate_order_id, upload_image_to_imgur
 from Pay import stripe_pay
+from payment_api import payment_bp
 from flask_cors import CORS
 
 
@@ -26,6 +27,9 @@ app.config["JWT_BLACKLIST_ENABLED"] = True
 app.config["JWT_BLACKLIST_TOKEN_CHECKS"] = ["access"]
 jwt = JWTManager(app)
 blacklist = set()
+
+# 註冊 Blueprint
+app.register_blueprint(payment_bp, url_prefix='/payment')
 
 # 初始化限流 IP限制請求頻率
 limiter=Limiter(
