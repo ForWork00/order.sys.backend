@@ -26,7 +26,7 @@ def format_user_data(user):
     return {
         "id":user["_id"],
         "email":user.get("email", "unknow"),
-        "register":user.get("register", "unknow"),
+        "register":user.get("register_time", "unknow"),
         "points":user.get("points", 0)
     }
 
