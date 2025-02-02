@@ -5,11 +5,10 @@ import os, stripe, re, time, subprocess, logging
 import requests
 from datetime import datetime, timezone, timedelta
 from flask_bcrypt import Bcrypt
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from config import jwt_config
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
-from mongoDB import get_user_collection, user_find, create_date_id, get_revenues, get_expenses, insert_expense, del_all_coll, get_order_collection, get_menu_collection # 從 mongoDB.py 導入
-from func import create_uuid, generate_trend_chart, export_to_excel, process_data, total, generate_order_id, upload_image_to_imgur
+from mongoDB import get_user_collection, user_find, create_date_id, get_revenues, get_expenses, insert_expense, del_all_coll, get_order_collection, get_menu_collection, blacklisted_tokens_collection # 從 mongoDB.py 導入
+from func import create_uuid, generate_trend_chart, export_to_excel, total, generate_order_id, upload_image_to_imgur, format_user_data
 from Pay import stripe_pay
 
 
@@ -18,19 +17,11 @@ collection=get_user_collection()
 order_collection = get_order_collection()
 menu_collection = get_menu_collection()
 bcrypt=Bcrypt(app)
-app.config["JWT_SECRET_KEY"] = "my_screct_key"
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 86400   #24hr
-app.config["JWT_BLACKLIST_ENABLED"] = True
-app.config["JWT_BLACKLIST_TOKEN_CHECKS"] = ["access"]
+app.config.from_object(jwt_config)
 jwt = JWTManager(app)
 blacklist = set()
 
-# 初始化限流 IP限制請求頻率
-limiter=Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["1 per minute"]
-)
+
 def is_valid_email(email):
     email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"  #check email 格式是否正確
     return re.match(email_regex, email) is not None
@@ -51,7 +42,6 @@ def home():
     return "Hello, World"
 
 @app.route("/sign_up", methods=["POST"])
-@limiter.limit("1 per minute")
 def sign_up():
     email=request.json.get("email")   #目前考慮email or LINE 連動登入
     password=request.json.get("password")
@@ -87,7 +77,7 @@ def sign_up():
         })
         return jsonify({"_id":uid, "email":email, "message":"User created successfully"}), 201
     except Exception as e:
-        return jsonify({"messag":"Created Fail"})
+        return jsonify({"error":"Created Fail"})
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -98,26 +88,24 @@ def login():
     # 檢查用戶是否存在
     user = next((u for u in user_find() if u['email'] == email), None)
     if not user or not bcrypt.check_password_hash(user['password'], password):
-        return jsonify({"message": "電子郵件不存在或密碼錯誤"}), 401
-        
-    # 生成 JWT
-    token = create_access_token(identity=user["email"])
-    return jsonify({"message": "登入成功", "token": token}), 200
+        return jsonify({"error": "Email does not exist or password is incorrect"}), 401
+    user_id=str(user["_id"])   # 確保 user_id 是 UUID 字串
+    # 生成 JWT 並將 user_id 放入
+    token = create_access_token(identity=user_id)
+    return jsonify({"message": "Login successful", "token": token}), 200
     
 
 
-@app.route("/protected", methods=["GET"])
-@jwt_required()
-def protected():
-    current_user = get_jwt_identity()
-    return jsonify({"message": "測試確定帶入TOKEN登入", "user": current_user}), 200
-    
+@jwt.token_in_blocklist_loader
+def check_token_revoked(jwt_header, jwt_payload):
+    return blacklisted_tokens_collection.find_one({"jti":jwt_payload["jti"]}) is not None
 @app.route("/logOut", methods=["POST"])
 @jwt_required()
 def logOut():
     jti=get_jwt()["jti"]
-    blacklist.add(jti)
+    blacklisted_tokens_collection.insert_one({"jti":jti})
     return jsonify({"message":"Logout successful"}),200
+
 
 
 @app.route("/create_stripe_pay", methods=["POST"])
@@ -126,26 +114,17 @@ def create_stripe_pay():
 
 
 
-""" 取得用戶資訊 """
-@app.route("/get_user/<user_id>")   # (DB中的_id)->以uuid 來抓取
-def get_user(user_id):
+""" 取得會員個人資訊 """
+@app.route("/get_userself", methods=["GET"])
+@jwt_required()
+def get_user():
     try:
-        user=collection.find_one({"_id":user_id})
+        user_id=get_jwt_identity()   # 取得當前使用者的 user_id（JWT 身份識別）
+
+        user=collection.find_one({"_id":str(user_id)})
         if not user:
             return jsonify({"error":"User does not exist"}), 404
-        
-        register_time=user.get("register_time")
-        if register_time:
-            formatted_time=register_time.strftime("%Y-%m-%d %H:%M:%S")
-        else:
-            formatted_time="Unkown"
-        
-        return jsonify({
-            "id": user["_id"],
-            "email": user.get("email", "Unkown"),
-            "register_time": formatted_time,
-            "points": user.get("points", 0)  # 如果沒有 points 欄位，預設為 0
-        })
+        return jsonify(format_user_data(user)), 200
     except Exception as e:
         return jsonify({"error":f"An error occurred: {str(e)}"}), 500
         
@@ -178,17 +157,9 @@ def update_points():
             "new_points": new_points
         }), 200
     except Exception as e:
-        return jsonify({"error": f"發生錯誤: {str(e)}"}), 500
+        return jsonify({"error": f"An error occurred : {str(e)}"}), 500
 
 
-
-""" accounting use """
-# @app.route("/api/revenues/add", methods=["POST"])   # 新增額外收入用api
-# def add_revenues():
-#     data=request.json
-#     data["date"]=datetime.strptime(data["date"], "%Y-%m-%d")  #這邊要改成自動抓新增資料的時間
-#     insert_revenue(data)
-#     return jsonify({"message":"Add Successfully"}), 201
 
 @app.route("/api/expenses/add", methods=["POST"])   # 新增支出api
 def add_expenses():
@@ -258,7 +229,7 @@ def export_report():
         return send_file(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         as_attachment=True, download_name="report_xlsx")
     except Exception as e:
-        logging.error(f"匯出報表發生錯誤:{e}")
+        logging.error(f"Error in exporting report :{e}")
         return jsonify({"error":str(e)}), 500
 
 
