@@ -34,6 +34,7 @@ def get_income_statement():
 
         for first_level in data:
             second_grades = first_level.get("second_grade", [])
+            
             for second in second_grades:
                 third_grades = second.get("third_grade", [])
 

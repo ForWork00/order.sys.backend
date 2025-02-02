@@ -535,14 +535,17 @@ def fetch_cash_flow_statement():
     print("MONGO_URI:", os.getenv("MONGO_URI"))
     print("DATABASE_NAME:", os.getenv("DATABASE_NAME"))
     return Cash_Flow_Statement()
+
  #現金流量表導出excel   
 @app.route('/accounting/cash_flow_statement/save', methods=["POST"])
 def download_cash_flow_statement():
     return save_cash_flow_statement()
+
 #損益表
 @app.route('/accounting/income_statement', methods=["GET"])
 def fetch_income_statement():
     return get_income_statement()
+
 #損益表導出excel
 @app.route('/accounting/income_statement/save', methods=["POST"])
 def download_income_statement():
@@ -552,6 +555,7 @@ def download_income_statement():
 @app.route("/accounting/balance_sheet", methods=["GET"])
 def get_balance_sheet():
     return balance_sheet()
+
 #資產負債表導出excel
 @app.route("/accounting/balance_sheet/save", methods=["POST"])
 def save_balance_sheet():
