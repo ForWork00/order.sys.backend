@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 
 from io import BytesIO
 from datetime import datetime
-from mongoDB import get_revenues, get_expenses
-from collections import defaultdict
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -23,33 +21,14 @@ sequence_number = 0 # 用來存儲當天的序號
 def create_uuid():
     return str(uuid.uuid4()).replace("-", "")[:8]
 
-
-""" 根據指定的時間（日、月、年）從日期字串中提取對應的關鍵字 """
-def extract_date_key(date_str:str, granularity:str) -> str:
-    date_obj=datetime.fromisoformat(date_str)
-    if granularity=="year":
-        return str(date_obj.year)
-    elif granularity=="month":
-        return f"{date_obj.year}-{date_obj.month:02d}"
-    elif granularity=="day":
-        return f"{date_obj.year}-{date_obj.month:02d}-{date_obj.day:02d}"
-    else:
-        raise ValueError("Invalid, Use 'day', 'month', or 'year'.")
-
-
-""" 指定日期類型進行分組計算總和 """
-def process_data(revenues, expenses, date_type):
-    result={"revenues":{}, "expenses":{}}
-
-    for rev in revenues:
-        date_key=extract_date_key(rev["updated_at"], date_type)
-        result["revenues"][date_key]=result["revenues".get(date_key, 0)+rev["total_price"]]
-
-    for exp in expenses:
-        date_key=extract_date_key(exp["created_time"], date_type)
-        result["expenses"][date_key]=result["expenses".get(date_key, 0)+exp["amount"]]
-    return result
-
+""" 會員資訊回傳格式 """
+def format_user_data(user):
+    return {
+        "id":user["_id"],
+        "email":user.get("email", "unknow"),
+        "register":user.get("register", "unknow"),
+        "points":user.get("points", 0)
+    }
 
 """ 計算總額 """
 def total(data, key):
@@ -132,9 +111,6 @@ def generate_order_id():
 
     order_id = f"{date_part}{time_part}{menber}"
     return order_id
-
-
-
 
 
 
