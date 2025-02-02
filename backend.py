@@ -17,6 +17,8 @@ from accounting.balance_sheet import balance_sheet,balance_sheet_save
 from accounting.cash_flow_statement import Cash_Flow_Statement, save_cash_flow_statement
 from accounting.income_statement import get_income_statement, save_income_statement
 from accounting.account_function import get_history, add_entry, set_opening_balance
+from payment_api import payment_bp
+from flask_cors import CORS
 
 # 載入 .env 檔案
 load_dotenv()
@@ -28,6 +30,7 @@ database_name = os.getenv('DATABASE_NAME')
 token = os.getenv('TOKEN')
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 collection=get_user_collection()
 order_collection = get_order_collection()
 menu_collection = get_menu_collection()
@@ -38,6 +41,9 @@ app.config["JWT_BLACKLIST_ENABLED"] = True
 app.config["JWT_BLACKLIST_TOKEN_CHECKS"] = ["access"]
 jwt = JWTManager(app)
 blacklist = set()
+
+# 註冊 Blueprint
+app.register_blueprint(payment_bp, url_prefix='/payment')
 
 # 初始化限流 IP限制請求頻率
 limiter=Limiter(
