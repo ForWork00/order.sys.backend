@@ -1,12 +1,12 @@
 import uuid, io, openpyxl, matplotlib, os, requests
 import pandas as pd
 import matplotlib.pyplot as plt
-
 from io import BytesIO
 from datetime import datetime
 from mongoDB import get_revenues, get_expenses
 from collections import defaultdict
 from dotenv import load_dotenv
+
 load_dotenv()
 
 """imgur"""
@@ -151,4 +151,3 @@ def upload_image_to_imgur(image_data):
         return response_data["data"]["link"]
     else:
         raise Exception(f"Imgur upload failed: {response_data}")
-

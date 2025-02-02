@@ -79,3 +79,11 @@ def get_revenues(start_date, end_date):   # 查詢收入（抓訂餐資訊）
 
 def get_expenses(start_date, end_date):   # 查詢支出
     return list(db.Expenses.find({"created_time":{"$gte":start_date, "$lte":end_date}}, {"_id":0, "amount":1, "created_time":1}))
+
+#會計系統
+# ------------------------------------------------------
+def get_accounting():   # 取得所有會計項目
+    return db["Accounting"]
+
+def get_AccountHistory():   #取得會計寫入紀錄
+    return db["AccountHistory"]
