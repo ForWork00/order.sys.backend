@@ -1,6 +1,7 @@
 from datetime import datetime
+import json
 from bson import ObjectId
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, Response, request, jsonify, send_file
 import os, stripe, re, time, subprocess, logging
 import requests
 from datetime import datetime, timezone, timedelta
@@ -10,9 +11,25 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from mongoDB import get_user_collection, user_find, create_date_id, get_revenues, get_expenses, insert_expense, del_all_coll, get_order_collection, get_menu_collection, blacklisted_tokens_collection # 從 mongoDB.py 導入
 from func import create_uuid, generate_trend_chart, export_to_excel, total, generate_order_id, upload_image_to_imgur, format_user_data
 from Pay import stripe_pay
+from dotenv import load_dotenv
+from accounting.balance_sheet import balance_sheet,balance_sheet_save
+from accounting.cash_flow_statement import Cash_Flow_Statement, save_cash_flow_statement
+from accounting.income_statement import get_income_statement, save_income_statement
+from accounting.account_function import get_history, add_entry, set_opening_balance
+from payment_api import payment_bp
+from flask_cors import CORS
 
+# 載入 .env 檔案
+load_dotenv()
+
+# 使用環境變數
+stripe_key = os.getenv('stripePay_key')
+mongo_uri = os.getenv('MONGO_URI')
+database_name = os.getenv('DATABASE_NAME')
+token = os.getenv('TOKEN')
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 collection=get_user_collection()
 order_collection = get_order_collection()
 menu_collection = get_menu_collection()
@@ -21,6 +38,7 @@ app.config.from_object(jwt_config)
 jwt = JWTManager(app)
 blacklist = set()
 
+app.register_blueprint(payment_bp, url_prefix='/payment')
 
 def is_valid_email(email):
     email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"  #check email 格式是否正確
@@ -484,6 +502,54 @@ def create_order():
     # 返回訂單結果
     return jsonify({"message": "Order created successfully", "order": order}), 201
 
+# 會計報表api
+# -----------------------------------------------------
+#現金流量表
+@app.route('/accounting/cash_flow_statement', methods=["GET"])
+def fetch_cash_flow_statement():
+    print("MONGO_URI:", os.getenv("MONGO_URI"))
+    print("DATABASE_NAME:", os.getenv("DATABASE_NAME"))
+    return Cash_Flow_Statement()
+
+ #現金流量表導出excel   
+@app.route('/accounting/cash_flow_statement/save', methods=["POST"])
+def download_cash_flow_statement():
+    return save_cash_flow_statement()
+
+#損益表
+@app.route('/accounting/income_statement', methods=["GET"])
+def fetch_income_statement():
+    return get_income_statement()
+
+#損益表導出excel
+@app.route('/accounting/income_statement/save', methods=["POST"])
+def download_income_statement():
+    return save_income_statement()
+
+#資產負債表
+@app.route("/accounting/balance_sheet", methods=["GET"])
+def get_balance_sheet():
+    return balance_sheet()
+
+#資產負債表導出excel
+@app.route("/accounting/balance_sheet/save", methods=["POST"])
+def save_balance_sheet():
+    return balance_sheet_save()
+
+#記帳歷史紀錄
+@app.route("/get_history", methods=["POST"])
+def fetch_get_add_history():
+    return get_history()
+
+#會計記帳
+@app.route("/add_entry", methods=["POST"])
+def fetch_add_accounting_entry():
+    return add_entry()
+
+#設定期初餘額
+@app.route("/set_opening_balance", methods=["POST"])
+def fetch_set_opening_balance():
+    return set_opening_balance()
 
 if __name__ == "__main__":
-    app.run(debug=False, threaded=False)
+    app.run(debug=True, threaded=False)

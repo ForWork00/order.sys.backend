@@ -77,7 +77,17 @@ def get_expenses(start_date, end_date):   # 查詢支出
     return list(db.Expenses.find({"created_time":{"$gte":start_date, "$lte":end_date}}, {"_id":0, "amount":1, "created_time":1}))
 
 
+
 """ backstage user """
 backstage_user = db["BSusers"]
 
 blacklisted_tokens_collection = db["blacklisted_tokens"]   #存放後台登出token的紀錄
+
+#會計系統
+# ------------------------------------------------------
+def get_accounting():   # 取得所有會計項目
+    return db["Accounting"]
+
+def get_AccountHistory():   #取得會計寫入紀錄
+    return db["AccountHistory"]
+
