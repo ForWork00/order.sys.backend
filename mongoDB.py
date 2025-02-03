@@ -1,7 +1,6 @@
 import os
 from pymongo.mongo_client import MongoClient
 from pymongo import ReturnDocument
-from flask import jsonify
 from dotenv import load_dotenv
 
 # 載入 .env 檔案中的環境變數
@@ -47,7 +46,7 @@ def get_menu_collection():
 """ 修改db當中Expenses的id """
 expense_collection=db["Expenses"]
 def create_date_id(date_prefix:str)->str:
-    count=db.counts.find_one_and_update(
+    count=db.Counts.find_one_and_update(
         {"_id":"expense_id"},
         {"$inc":{"sequence_value":1}},   # 自增 1
         return_document=ReturnDocument.AFTER,   # 返回更新後的文件
@@ -67,9 +66,6 @@ def del_all_coll():
 
 
 """ accounting use """
-# def insert_revenue(data):   #收入
-#     db.Revenues.insert_one(data)
-
 def insert_expense(data):   #支出
     db.Expenses.insert_one(data)
 
@@ -80,6 +76,13 @@ def get_revenues(start_date, end_date):   # 查詢收入（抓訂餐資訊）
 def get_expenses(start_date, end_date):   # 查詢支出
     return list(db.Expenses.find({"created_time":{"$gte":start_date, "$lte":end_date}}, {"_id":0, "amount":1, "created_time":1}))
 
+
+
+""" backstage user """
+backstage_user = db["BSusers"]
+
+blacklisted_tokens_collection = db["blacklisted_tokens"]   #存放後台登出token的紀錄
+
 #會計系統
 # ------------------------------------------------------
 def get_accounting():   # 取得所有會計項目
@@ -87,3 +90,4 @@ def get_accounting():   # 取得所有會計項目
 
 def get_AccountHistory():   #取得會計寫入紀錄
     return db["AccountHistory"]
+
