@@ -11,13 +11,13 @@ payment_bp = Blueprint('payment', __name__)
 
 
 # 建立信用卡付款訂單
-@payment_bp.route('/create_payment/credit', methods=['GET', 'POST'])
+@payment_bp.route('/create_payment/credit', methods=['POST'])
 def create_payment_credit():
     try:
         # 從請求中獲取參數
-        merchant_trade_no = request.args.get('MerchantTradeNo', type=str)
-        total_amount = request.args.get('TotalAmount', type=int)
-        item_name = request.args.get('ItemName', type=str)
+        merchant_trade_no = request.json.get('MerchantTradeNo', type=str)
+        total_amount = request.json.get('TotalAmount', type=int)
+        item_name = request.json.get('ItemName', type=str)
 
         # 檢查必填參數
         if merchant_trade_no is None or total_amount is None or item_name is None:
@@ -66,13 +66,13 @@ def create_payment_credit():
 
 
 # 建立Apple Pay付款訂單
-@payment_bp.route('/create_payment/apple_pay', methods=['GET', 'POST'])
+@payment_bp.route('/create_payment/apple_pay', methods=['POST'])
 def create_payment_apple_pay():
     try:
         # 從請求中獲取參數
-        merchant_trade_no = request.args.get('MerchantTradeNo', type=str)
-        total_amount = request.args.get('TotalAmount', type=int)
-        item_name = request.args.get('ItemName', type=str)
+        merchant_trade_no = request.json.get('MerchantTradeNo', type=str)
+        total_amount = request.json.get('TotalAmount', type=int)
+        item_name = request.json.get('ItemName', type=str)
 
         # 檢查必填參數
         if merchant_trade_no is None or total_amount is None or item_name is None:
