@@ -124,6 +124,25 @@ def upload_image_to_imgur(image_data):
     response_data = response.json()
 
     if response.status_code == 200 and response_data.get("success"):
-        return response_data["data"]["link"]
+        return {
+            "image_url": response_data["data"]["link"], 
+            "deletehash": response_data["data"]["deletehash"]
+        }
     else:
         raise Exception(f"Imgur upload failed: {response_data}")
+
+
+def delete_image_to_imgur(imgur_deletehash):
+    """刪除 imgur 上的圖片，返回成功/失敗"""
+    if not imgur_deletehash:
+        return {"success": False, "error": "無效的 imgur_deletehash"}
+    
+    # 呼叫已認證 Imgur API 刪除圖片
+    headers = {"Authorization": f"Bearer {IMGUR_ACCESS_TOKEN}"}
+    response = requests.delete(f"{IMGUR_API_URL}/{imgur_deletehash}", headers=headers)
+
+    if response.status_code == 200:
+        return {"success": True}
+    else:
+        return {"success": False, "error": response.json()}
+    
