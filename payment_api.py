@@ -4,6 +4,7 @@ from datetime import datetime
 import hashlib
 import urllib.parse
 import requests
+import os
 
 # 建立 Blueprint
 payment_bp = Blueprint('payment', __name__)
@@ -38,18 +39,18 @@ def create_payment_credit():
             'TotalAmount': total_amount, # 前端傳入的TotalAmount
             'TradeDesc': '訂單測試',
             'ItemName': item_name, # 前端傳入的ItemName
-            'ReturnURL': 'http://localhost:5000/payment/return_url',
+            'ReturnURL': f"{os.getenv('ORDER_SYS_URL')}/payment/return_url",
             'ChoosePayment': 'Credit',
-            'ClientBackURL': 'http://localhost:5000/payment/client_back_url',
-            'OrderResultURL': 'http://localhost:5000/payment/order_result_url',
+            'ClientBackURL': f"{os.getenv('ORDER_SYS_URL')}/payment/client_back_url",
+            'OrderResultURL': f"{os.getenv('ORDER_SYS_URL')}/payment/order_result_url",
             'NeedExtraPaidInfo': 'Y',
             'EncryptType': 1,
         }
 
         ecpay_payment_sdk = module.ECPayPaymentSdk(
-            MerchantID='3002607',
-            HashKey='pwFHCqoQZGmho4w6',
-            HashIV='EkRm7iFT261dpevs'
+            MerchantID=os.getenv('ECPay_MerchantID'),
+            HashKey=os.getenv('ECPay_HashKey'),
+            HashIV=os.getenv('ECPay_HashIV')
         )
 
         final_order_params = ecpay_payment_sdk.create_order(order_params)
@@ -91,18 +92,18 @@ def create_payment_apple_pay():
             'TotalAmount': total_amount, # 前端傳入的TotalAmount
             'TradeDesc': '訂單測試',
             'ItemName': item_name, # 前端傳入的ItemName
-            'ReturnURL': 'http://localhost:5000/payment/return_url',
+            'ReturnURL': f"{os.getenv('ORDER_SYS_URL')}/payment/return_url",
             'ChoosePayment': 'Apple Pay',
-            'ClientBackURL': 'http://localhost:5000/payment/client_back_url',
-            'OrderResultURL': 'http://localhost:5000/payment/order_result_url',
+            'ClientBackURL': f"{os.getenv('ORDER_SYS_URL')}/payment/client_back_url",
+            'OrderResultURL': f"{os.getenv('ORDER_SYS_URL')}/payment/order_result_url",
             'NeedExtraPaidInfo': 'Y',
             'EncryptType': 1,
         }
 
         ecpay_payment_sdk = module.ECPayPaymentSdk(
-            MerchantID='3002607',
-            HashKey='pwFHCqoQZGmho4w6',
-            HashIV='EkRm7iFT261dpevs'
+            MerchantID=os.getenv('ECPay_MerchantID'),
+            HashKey=os.getenv('ECPay_HashKey'),
+            HashIV=os.getenv('ECPay_HashIV')
         )
 
         final_order_params = ecpay_payment_sdk.create_order(order_params)
@@ -144,7 +145,6 @@ def order_result_url():
         result_data = request.form.to_dict()
         print("Received result data:", result_data)  # 添加日誌
 
-        
         if result_data.get('RtnCode') == '1':
             # 交易成功
             message = "交易成功！"
@@ -153,7 +153,7 @@ def order_result_url():
             order_id = result_data.get('MerchantTradeNo')  
 
             # 發送 PATCH 請求更新訂單狀態
-            response = requests.patch(f'http://localhost:5000/orders/{order_id}', json={"status": "completed"})
+            response = requests.patch(f"{os.getenv('ORDER_SYS_URL')}/orders/{order_id}", json={"status": "completed"}) 
 
             # 若更新失敗，則回傳失敗訊息
             if response.status_code != 200:
