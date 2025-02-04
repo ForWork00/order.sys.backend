@@ -2,7 +2,7 @@ from datetime import datetime
 import json
 from bson import ObjectId
 from flask import Flask, Response, request, jsonify, send_file
-import os, stripe, re, time, subprocess, logging
+import os, re, time, subprocess, logging
 import requests
 from datetime import datetime, timezone, timedelta
 from flask_bcrypt import Bcrypt
@@ -10,7 +10,6 @@ from config import jwt_config
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
 from mongoDB import get_user_collection, user_find, create_date_id, get_revenues, get_expenses, insert_expense, del_all_coll, get_order_collection, get_menu_collection, blacklisted_tokens_collection # 從 mongoDB.py 導入
 from func import create_uuid, generate_trend_chart, export_to_excel, total, generate_order_id, upload_image_to_imgur, format_user_data
-from Pay import stripe_pay
 from dotenv import load_dotenv
 from accounting.balance_sheet import balance_sheet,balance_sheet_save
 from accounting.cash_flow_statement import Cash_Flow_Statement, save_cash_flow_statement
@@ -24,7 +23,6 @@ from flask_cors import CORS
 load_dotenv()
 
 # 使用環境變數
-stripe_key = os.getenv('stripePay_key')
 mongo_uri = os.getenv('MONGO_URI')
 database_name = os.getenv('DATABASE_NAME')
 token = os.getenv('TOKEN')
@@ -123,12 +121,6 @@ def logOut():
     jti=get_jwt()["jti"]
     blacklisted_tokens_collection.insert_one({"jti":jti})
     return jsonify({"message":"Logout successful"}),200
-
-
-
-@app.route("/create_stripe_pay", methods=["POST"])
-def create_stripe_pay():
-    return stripe_pay()
 
 
 

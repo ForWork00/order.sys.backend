@@ -26,7 +26,7 @@ def create_payment_credit():
         # 導入 ECPay SDK
         spec = importlib.util.spec_from_file_location(
             "ecpay_payment_sdk",
-            "./ecpay_payment_sdk.py"
+            os.getenv('ECPAY_PAYMENT_SDK_LOCATION')
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -39,18 +39,20 @@ def create_payment_credit():
             'TotalAmount': total_amount, # 前端傳入的TotalAmount
             'TradeDesc': '訂單測試',
             'ItemName': item_name, # 前端傳入的ItemName
-            'ReturnURL': f"{os.getenv('ORDER_SYS_URL')}/payment/return_url",
+            'ReturnURL': f'{os.getenv('ORDER_SYS_URL')}/payment/return_url',
             'ChoosePayment': 'Credit',
-            'ClientBackURL': f"{os.getenv('ORDER_SYS_URL')}/payment/client_back_url",
-            'OrderResultURL': f"{os.getenv('ORDER_SYS_URL')}/payment/order_result_url",
+            'ClientBackURL': f'{os.getenv('ORDER_SYS_URL')}/payment/client_back_url',
+            'OrderResultURL': f'{os.getenv('ORDER_SYS_URL')}/payment/order_result_url',
             'NeedExtraPaidInfo': 'Y',
             'EncryptType': 1,
         }
 
+        print(order_params)
+
         ecpay_payment_sdk = module.ECPayPaymentSdk(
-            MerchantID=os.getenv('ECPay_MerchantID'),
-            HashKey=os.getenv('ECPay_HashKey'),
-            HashIV=os.getenv('ECPay_HashIV')
+            MerchantID=os.getenv('ECPAY_MERCHANTID'),
+            HashKey=os.getenv('ECPAY_HASHKEY'),
+            HashIV=os.getenv('ECPAY_HASHIV')
         )
 
         final_order_params = ecpay_payment_sdk.create_order(order_params)
@@ -79,7 +81,7 @@ def create_payment_apple_pay():
         # 導入 ECPay SDK
         spec = importlib.util.spec_from_file_location(
             "ecpay_payment_sdk",
-            "./ecpay_payment_sdk.py"
+            os.getenv('ECPAY_PAYMENT_SDK_LOCATION')
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -92,18 +94,20 @@ def create_payment_apple_pay():
             'TotalAmount': total_amount, # 前端傳入的TotalAmount
             'TradeDesc': '訂單測試',
             'ItemName': item_name, # 前端傳入的ItemName
-            'ReturnURL': f"{os.getenv('ORDER_SYS_URL')}/payment/return_url",
+            'ReturnURL': f'{os.getenv('ORDER_SYS_URL')}/payment/return_url',
             'ChoosePayment': 'Apple Pay',
-            'ClientBackURL': f"{os.getenv('ORDER_SYS_URL')}/payment/client_back_url",
-            'OrderResultURL': f"{os.getenv('ORDER_SYS_URL')}/payment/order_result_url",
+            'ClientBackURL': f'{os.getenv('ORDER_SYS_URL')}/payment/client_back_url',
+            'OrderResultURL': f'{os.getenv('ORDER_SYS_URL')}/payment/order_result_url',
             'NeedExtraPaidInfo': 'Y',
             'EncryptType': 1,
         }
 
+        print(order_params)
+
         ecpay_payment_sdk = module.ECPayPaymentSdk(
-            MerchantID=os.getenv('ECPay_MerchantID'),
-            HashKey=os.getenv('ECPay_HashKey'),
-            HashIV=os.getenv('ECPay_HashIV')
+            MerchantID=os.getenv('ECPAY_MERCHANTID'),
+            HashKey=os.getenv('ECPAY_HASHKEY'),
+            HashIV=os.getenv('ECPAY_HASHIV')
         )
 
         final_order_params = ecpay_payment_sdk.create_order(order_params)
