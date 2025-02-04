@@ -26,7 +26,7 @@ def create_payment_credit():
         # 導入 ECPay SDK
         spec = importlib.util.spec_from_file_location(
             "ecpay_payment_sdk",
-            os.getenv('ECPay_Payment_SDK_location')
+            os.getenv('ECPAY_PAYMENT_SDK_LOCATION')
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -81,7 +81,7 @@ def create_payment_apple_pay():
         # 導入 ECPay SDK
         spec = importlib.util.spec_from_file_location(
             "ecpay_payment_sdk",
-            os.getenv('ECPay_Payment_SDK_location')
+            os.getenv('ECPAY_PAYMENT_SDK_LOCATION')
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
