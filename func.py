@@ -3,9 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from io import BytesIO
 from datetime import datetime
+from mongoDB import get_user_collection
+from flask import request, jsonify
 from dotenv import load_dotenv
 
 load_dotenv()
+
+collection = get_user_collection()
 
 """imgur"""
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
@@ -145,4 +149,3 @@ def delete_image_to_imgur(imgur_deletehash):
         return {"success": True}
     else:
         return {"success": False, "error": response.json()}
-    

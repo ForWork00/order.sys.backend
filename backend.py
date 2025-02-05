@@ -9,14 +9,16 @@ from datetime import datetime, timezone, timedelta
 from flask_bcrypt import Bcrypt
 from config import jwt_config
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
-from mongoDB import get_user_collection, user_find, create_date_id, get_revenues, get_expenses, insert_expense, del_all_coll, get_order_collection, get_menu_collection, blacklisted_tokens_collection, backstage_user, get_user_collection # 從 mongoDB.py 導入
-from func import create_uuid, generate_trend_chart, export_to_excel, total, generate_order_id, upload_image_to_imgur, format_user_data
+from mongoDB import get_user_collection, user_find, create_date_id, get_revenues, get_expenses, insert_expense, del_all_coll, blacklisted_tokens_collection, backstage_user, get_user_collection # 從 mongoDB.py 導入
+from func import create_uuid, generate_trend_chart, export_to_excel, total, format_user_data
 from dotenv import load_dotenv
 from accounting.balance_sheet import balance_sheet,balance_sheet_save
 from accounting.cash_flow_statement import Cash_Flow_Statement, save_cash_flow_statement
 from accounting.income_statement import get_income_statement, save_income_statement
 from accounting.account_function import get_history, add_entry, set_opening_balance
 from menu.menu_sys import get_menu_sys, get_menu_item_sys, create_menu_item_sys, delete_menu_item_sys, update_menu_item_sys
+from order.order_sys import get_orders_sys, get_order_sys, update_order_sys, create_order_sys, delete_order_sys
+from coupons.coupons_sys import create_coupon_sys, get_user_coupons_sys, delete_coupon_sys, get_all_coupons_sys, update_coupon_sys, get_coupon_sys, bind_coupon_sys, create_admin_coupon_sys
 from payment_api import payment_bp
 from flask_cors import CORS
 
@@ -31,7 +33,6 @@ token = os.getenv('TOKEN')
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 collection=get_user_collection()
-order_collection = get_order_collection()
 bcrypt=Bcrypt(app)
 app.config.from_object(jwt_config)
 jwt = JWTManager(app)
@@ -173,6 +174,7 @@ def update_points():
 
 
 
+
 @app.route("/api/expenses/add", methods=["POST"])   # 新增支出api
 def add_expenses():
     data=request.json
@@ -277,7 +279,7 @@ def create_menu_item():
     """新增菜單品項"""
     return create_menu_item_sys()
     
-@app.route('/menu/<item_id>', methods=["PATCH"])
+@app.route('/menu/<item_id>', methods=["PUT"])
 def update_menu_item(item_id):
     """修改單一菜單品項資訊"""
     return update_menu_item_sys(item_id)
@@ -292,126 +294,69 @@ def delete_menu_item(item_id):
 @app.route('/orders', methods=["GET"])
 def get_orders():
     """取得訂單列表"""
-    orders = list(order_collection.find())
-    return jsonify(orders), 200
+    return get_orders_sys()
 
 @app.route('/orders/<order_id>', methods=["POST"])
 def get_order(order_id):
-    """取得單一訂單資訊"""
-    try:
-        # 將 order_id 轉換為 str
-        order_id = str(order_id)
-    except ValueError:
-        return jsonify({"error": "Invalid order_id format"}), 400
+    """查詢單一訂單資訊"""
+    return get_order_sys(order_id)
 
-    order = order_collection.find_one({"_id": order_id})
-    if not order:
-        return jsonify({"error": "Order not found"}), 404
-    return jsonify(order), 200
-
-@app.route('/orders/<order_id>', methods=["PATCH"])
+@app.route('/orders/<order_id>', methods=["PUT"])
 def update_order(order_id):
     """修改訂單資訊"""
-    data = request.json
-    allowed_statuses = ["pending", "completed", "canceled"]  # 允許的狀態
-    update_fields = {}
-
-    if "status" in data:
-        #檢查是否有符合allowed_statuses列表裡這幾種，若符合則更新status狀態
-        new_status = data["status"]
-        if new_status not in allowed_statuses:
-            return jsonify({"error": f"Invalid status. Allowed values are {allowed_statuses}"}), 400
-        update_fields["status"] = new_status
-
-    update_fields["updated_at"] = datetime.now()
-
-    if not update_fields:
-        return jsonify({"error": "No valid fields to update"}), 400
-
-    result = order_collection.update_one({"_id": order_id}, {"$set": update_fields})
-    if result.matched_count == 0:
-        return jsonify({"error": "Order not found"}), 404
-    return jsonify({"message": "Order updated successfully"}), 200
+    return update_order_sys(order_id)
 
 @app.route('/orders', methods=["POST"])
 def create_order():
-    """用戶新增訂單（登入或不登入）"""
-    data = request.json
-    user_id = data.get("user_id")
-    items = data.get("items")  # 預期格式: [{"menu_item_id": "123", "quantity": 2}, ...]
+    """用戶新增訂單"""
+    return create_order_sys()
 
-    # 檢查 items 格式
-    if not items or not isinstance(items, list):
-        return jsonify({"error": "items is required and must be a list"}), 400
+@app.route('/orders/<order_id>', methods=["DELETE"])
+def delete_order(order_id):
+    """用戶刪除單一訂單"""
+    return delete_order_sys(order_id)
 
-    # 確認 user_id 是否對應到資料庫
-    user_data = None
-    if user_id:
-        user_data = collection.find_one({"_id": user_id})
-        if not user_data:
-            return jsonify({"error": "Invalid user_id"}), 400
+# 優惠券系統api
+# -----------------------------------------------------
+@app.route('/coupons', methods=["POST"])
+def create_coupon():
+    """會員使用點數兌換優惠券（新增優惠券）"""
+    return create_coupon_sys()
 
-    # 構建菜單項目 ID 和數量
-    try:
-        menu_item_ids = [float(item["menu_item_id"]) for item in items]
-    except ValueError:
-        return jsonify({"error": "Invalid menu_item_id format"}), 400
+@app.route('/coupons', methods=["GET"])
+def get_all_coupons():
+    """獲取所有優惠券（管理員用）"""
+    return get_all_coupons_sys()
 
-    quantities = {item["menu_item_id"]: item.get("quantity", 1) for item in items}
+@app.route('/coupons/<coupon_id>', methods=["GET"])
+def get_coupon(coupon_id):
+    """獲取單一優惠券資訊"""
+    return get_coupon_sys(coupon_id)
 
-    # 查詢菜單項目
-    menu_items = list(get_menu_collection.find({"_id": {"$in": menu_item_ids}}))
-    found_ids = {item["_id"] for item in menu_items}
-    invalid_ids = [menu_id for menu_id in menu_item_ids if menu_id not in found_ids]
+@app.route('/coupons/<user_id>', methods=["GET"])
+def get_user_coupons(user_id):
+    """獲取特定會員的所有優惠券"""
+    return get_user_coupons_sys(user_id)
 
-    if invalid_ids:
-        return jsonify({"error": "Some menu items are invalid", "invalid_ids": invalid_ids}), 400
+@app.route('/coupons/<coupon_id>', methods=["PUT"])
+def update_coupon(coupon_id):
+    """更新優惠券資訊（例如修改有效期限）"""
+    return update_coupon_sys(coupon_id)
 
-    # 計算總價並構建訂單項目
-    order_items = []
-    total_price = 0
-    order_type = 1  # 預設訂單類型為 1（不使用優惠）
+@app.route('/coupons/<coupon_id>', methods=["DELETE"])
+def delete_coupon(coupon_id):
+    """刪除單一優惠券"""
+    return delete_coupon_sys(coupon_id)
 
-    for item in menu_items:
-        quantity = quantities.get(item["_id"], 1)  # 默認數量為 1
-        price = float(item["price"])  # 確保價格為數字類型
-        total = price * quantity
+#管理員新增優惠券
+@app.route('/coupons/admin', methods=["POST"])
+def create_admin_coupon():
+    return create_admin_coupon_sys()
 
-        order_items.append({
-            "id": item["_id"],
-            "name": item["name"],
-            "price": price,
-            "quantity": quantity,
-            "total": total,
-        })
-        total_price += total
-
-    # 如果 user_id 存在且對應到用戶，檢查是否使用優惠
-    if user_data:
-        order_type = data.get("type", 1)  # 使用前端傳入的 type 值，若無則默認為 1
-
-    # 構建訂單資料
-    order_id = generate_order_id()
-    now = datetime.now()
-    order = {
-        "_id": order_id,
-        "user_id": user_id,  # 登入用戶的 user_id，未登入為 None
-        "menu_items": order_items,
-        "total_price": total_price,
-        "type": order_type,  # 新增 type 欄位，1: 不使用優惠，2: 使用優惠
-        "status": "pending",  # 訂單初始狀態
-        "created_at": now,
-        "updated_at": now,
-    }
-
-    # 插入訂單到數據庫
-    try:
-        order_collection.insert_one(order)
-    except Exception as e:
-        return jsonify({"error": "Failed to create order", "details": str(e)}), 500
-
-    # 返回訂單結果
-    return jsonify({"message": "Order created successfully", "order": order}), 201
+#會員輸入優惠券代碼進行綁定
+@app.route('/coupons/bind', methods=["POST"])
+def bind_coupon():
+    return bind_coupon_sys()
 
 # 會計報表api
 # -----------------------------------------------------
