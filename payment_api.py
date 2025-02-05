@@ -154,8 +154,8 @@ def order_result_url():
             # 取得訂單ID
             order_id = result_data.get('MerchantTradeNo')  
 
-            # 發送 PATCH 請求更新訂單狀態
-            response = requests.patch(f"{os.getenv('ORDER_SYS_URL')}/orders/{order_id}", json={"status": "completed"}) 
+            # 發送 put 請求更新訂單狀態
+            response = requests.put(f"{os.getenv('ORDER_SYS_URL')}/orders/{order_id}", json={"status": "completed"}) 
 
             # 若更新失敗，則回傳失敗訊息
             if response.status_code != 200:
