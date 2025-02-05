@@ -5,7 +5,6 @@ from flask import Flask, Response, request, jsonify, send_file
 import os, re, time, subprocess, logging
 import requests
 from datetime import datetime, timezone, timedelta
-
 from flask_bcrypt import Bcrypt
 from config import jwt_config
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
