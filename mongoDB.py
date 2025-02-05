@@ -42,6 +42,11 @@ def get_menu_collection():
     """取得 Menu 集合"""
     return db["Menu"]
 
+# 優惠券系統
+# ------------------------------------------------------
+def get_coupons_collection():
+    """取得 Coupons 集合"""
+    return db["Coupons"]
 
 """ 修改db當中Expenses的id """
 expense_collection=db["Expenses"]
