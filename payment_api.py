@@ -13,12 +13,12 @@ payment_bp = Blueprint('payment', __name__)
 # 建立信用卡付款訂單
 @payment_bp.route('/create_payment/credit', methods=['POST'])
 def create_payment_credit():
-    try:
-        # 從請求中獲取參數
-        merchant_trade_no = request.json.get('MerchantTradeNo', type=str)
-        total_amount = request.json.get('TotalAmount', type=int)
-        item_name = request.json.get('ItemName', type=str)
-
+    if request.is_json:  # 確保請求的內容類型是 JSON
+        data = request.get_json()  # 獲取 JSON 數據
+        merchant_trade_no = data.get('MerchantTradeNo')
+        total_amount = int(data.get('TotalAmount'))  # 確保轉換為整數
+        item_name = data.get('ItemName')
+        
         # 檢查必填參數
         if merchant_trade_no is None or total_amount is None or item_name is None:
             return jsonify({'error': 'MerchantTradeNo, TotalAmount, ItemName, are required'}), 400
@@ -39,10 +39,10 @@ def create_payment_credit():
             'TotalAmount': total_amount, # 前端傳入的TotalAmount
             'TradeDesc': '訂單測試',
             'ItemName': item_name, # 前端傳入的ItemName
-            'ReturnURL': f'{os.getenv('ORDER_SYS_URL')}/payment/return_url',
+            'ReturnURL': f"{os.getenv('ORDER_SYS_URL')}/payment/return_url",
             'ChoosePayment': 'Credit',
-            'ClientBackURL': f'{os.getenv('ORDER_SYS_URL')}/payment/client_back_url',
-            'OrderResultURL': f'{os.getenv('ORDER_SYS_URL')}/payment/order_result_url',
+            'ClientBackURL': f"{os.getenv('ORDER_SYS_URL')}/payment/client_back_url",
+            'OrderResultURL': f"{os.getenv('ORDER_SYS_URL')}/payment/order_result_url",
             'NeedExtraPaidInfo': 'Y',
             'EncryptType': 1,
         }
@@ -60,20 +60,19 @@ def create_payment_credit():
         html = ecpay_payment_sdk.gen_html_post_form(action_url, final_order_params)
 
         return html
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    else:
+        return jsonify({'error': 'Request must be JSON'}), 400
 
 
 # 建立Apple Pay付款訂單
 @payment_bp.route('/create_payment/apple_pay', methods=['POST'])
 def create_payment_apple_pay():
-    try:
-        # 從請求中獲取參數
-        merchant_trade_no = request.json.get('MerchantTradeNo', type=str)
-        total_amount = request.json.get('TotalAmount', type=int)
-        item_name = request.json.get('ItemName', type=str)
-
+    if request.is_json:  # 確保請求的內容類型是 JSON
+        data = request.get_json()  # 獲取 JSON 數據
+        merchant_trade_no = data.get('MerchantTradeNo')
+        total_amount = int(data.get('TotalAmount'))  # 確保轉換為整數
+        item_name = data.get('ItemName')
+        
         # 檢查必填參數
         if merchant_trade_no is None or total_amount is None or item_name is None:
             return jsonify({'error': 'MerchantTradeNo, TotalAmount, ItemName, are required'}), 400
@@ -94,10 +93,10 @@ def create_payment_apple_pay():
             'TotalAmount': total_amount, # 前端傳入的TotalAmount
             'TradeDesc': '訂單測試',
             'ItemName': item_name, # 前端傳入的ItemName
-            'ReturnURL': f'{os.getenv('ORDER_SYS_URL')}/payment/return_url',
+            'ReturnURL': f"{os.getenv('ORDER_SYS_URL')}/payment/return_url",
             'ChoosePayment': 'Apple Pay',
-            'ClientBackURL': f'{os.getenv('ORDER_SYS_URL')}/payment/client_back_url',
-            'OrderResultURL': f'{os.getenv('ORDER_SYS_URL')}/payment/order_result_url',
+            'ClientBackURL': f"{os.getenv('ORDER_SYS_URL')}/payment/client_back_url",
+            'OrderResultURL': f"{os.getenv('ORDER_SYS_URL')}/payment/order_result_url",
             'NeedExtraPaidInfo': 'Y',
             'EncryptType': 1,
         }
@@ -115,9 +114,8 @@ def create_payment_apple_pay():
         html = ecpay_payment_sdk.gen_html_post_form(action_url, final_order_params)
 
         return html
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    else:
+        return jsonify({'error': 'Request must be JSON'}), 400
 
 # 處理callback
 @payment_bp.route('/return_url', methods=['POST'])
