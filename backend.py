@@ -1,9 +1,11 @@
 from datetime import datetime
 import json
 from bson import ObjectId
-from flask import Flask, request, jsonify, send_file
-import os, re, logging
-from datetime import datetime
+from flask import Flask, Response, request, jsonify, send_file
+import os, re, time, subprocess, logging
+import requests
+from datetime import datetime, timezone, timedelta
+
 from flask_bcrypt import Bcrypt
 from config import jwt_config
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
@@ -14,6 +16,7 @@ from accounting.balance_sheet import balance_sheet,balance_sheet_save
 from accounting.cash_flow_statement import Cash_Flow_Statement, save_cash_flow_statement
 from accounting.income_statement import get_income_statement, save_income_statement
 from accounting.account_function import get_history, add_entry, set_opening_balance
+from menu.menu_sys import get_menu_sys, get_menu_item_sys, create_menu_item_sys, delete_menu_item_sys, update_menu_item_sys
 from payment_api import payment_bp
 from flask_cors import CORS
 
@@ -21,7 +24,6 @@ from flask_cors import CORS
 load_dotenv()
 
 # 使用環境變數
-stripe_key = os.getenv('stripePay_key')
 mongo_uri = os.getenv('MONGO_URI')
 database_name = os.getenv('DATABASE_NAME')
 token = os.getenv('TOKEN')
@@ -30,7 +32,6 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 collection=get_user_collection()
 order_collection = get_order_collection()
-menu_collection = get_menu_collection()
 bcrypt=Bcrypt(app)
 app.config.from_object(jwt_config)
 jwt = JWTManager(app)
@@ -264,110 +265,27 @@ def delete_all_coll():
 @app.route('/menu', methods=["GET"])
 def get_menu():
     """取得菜單列表"""
-    menu = list(menu_collection.find({"is_available": True}))# 過濾掉is_available=False
-    if not menu:
-        return jsonify({"error": "Menu not found"}), 404
-
-    
-    return jsonify(menu), 200
+    return get_menu_sys()
 
 @app.route('/menu/<item_id>', methods=["POST"])
 def get_menu_item(item_id):
     """取得單一菜單品項資訊"""
-    try:
-        # 將 item_id 轉換為 float
-        item_id = float(item_id)
-    except ValueError:
-        return jsonify({"error": "Invalid item_id format"}), 400
-    
-    # 查詢資料庫
-    menu_item = menu_collection.find_one({"_id": item_id})
-    if not menu_item:
-        return jsonify({"error": "Menu item not found"}), 404
-    return jsonify(menu_item), 200
+    return get_menu_item_sys(item_id)
 
 @app.route('/menu', methods=["POST"])
 def create_menu_item():
     """新增菜單品項"""
-    data = request.form
-    id = data.get("_id")
-    name = data.get("name")
-    description = data.get("description", "")
-    price = data.get("price")
-    category = data.get("category")
-    image = request.files.get("image")
-    now = datetime.now()
-
-    if not name or not price or not category:
-        return jsonify({"error": "Missing required fields"}), 400
-
-    try:
-        # 如果有提供image
-        image_url = ""
-        if image:
-            image_url = upload_image_to_imgur(image.read())
-
-        #構建菜單
-        menu_item = {
-            "_id": float(id),
-            "name": str(name),
-            "description": str(description),
-            "price": float(price),  # 確保為數字
-            "category": str(category),
-            "image_url": str(image_url),
-            "is_available": True, #默認
-            "created_at": now,
-            "updated_at": now
-        }
-        menu_collection.insert_one(menu_item)
-        return jsonify({"message": "Menu item created successfully", "item": menu_item}), 201
-    except Exception as e:
-        return jsonify({"error": f"Database error: {e}"}), 500
+    return create_menu_item_sys()
     
 @app.route('/menu/<item_id>', methods=["PATCH"])
 def update_menu_item(item_id):
     """修改單一菜單品項資訊"""
-    try:
-        # 將 item_id 轉換為 float（與資料庫的 _id 格式一致）
-        item_id = float(item_id)
-    except ValueError:
-        return jsonify({"error": "Invalid item_id format"}), 400
+    return update_menu_item_sys(item_id)
 
-    # 查詢資料庫中的菜單項目
-    menu_item = menu_collection.find_one({"_id": item_id})
-    if not menu_item:
-        return jsonify({"error": "Menu item not found"}), 404
-
-    # 接收用戶提交的更新數據
-    update_data = request.json
-    if not update_data:
-        return jsonify({"error": "No update data provided"}), 400
-
-    # 定義允許更新的字段
-    allowed_fields = {"name", "description", "price", "category", "image_url", "is_available"}
-
-    # 過濾更新數據，僅允許更新指定字段
-    filtered_update_data = {key: update_data[key] for key in update_data if key in allowed_fields}
-
-    if not filtered_update_data:
-        return jsonify({"error": "No valid fields to update"}), 400
-
-    # 添加 updated_at 時間戳
-    filtered_update_data["updated_at"] = datetime.now()
-    
-    # 更新資料庫
-    result = menu_collection.update_one(
-        {"_id": item_id},
-        {"$set": filtered_update_data}
-    )
-
-    if result.modified_count == 0:
-        return jsonify({"error": "No changes made"}), 400
-
-    # 返回更新後的菜單項目
-    updated_menu_item = menu_collection.find_one({"_id": item_id})
-    return jsonify(updated_menu_item), 200
-
+@app.route('/menu/<item_id>', methods=["DELETE"])
+def delete_menu_item(item_id):
+    """刪除單一菜單品項資訊"""
+    return delete_menu_item_sys(item_id)
 
 # 訂單系統api
 # -----------------------------------------------------
@@ -442,7 +360,7 @@ def create_order():
     quantities = {item["menu_item_id"]: item.get("quantity", 1) for item in items}
 
     # 查詢菜單項目
-    menu_items = list(menu_collection.find({"_id": {"$in": menu_item_ids}}))
+    menu_items = list(get_menu_collection.find({"_id": {"$in": menu_item_ids}}))
     found_ids = {item["_id"] for item in menu_items}
     invalid_ids = [menu_id for menu_id in menu_item_ids if menu_id not in found_ids]
 
