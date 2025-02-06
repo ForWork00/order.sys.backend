@@ -19,6 +19,7 @@ from menu.menu_sys import get_menu_sys, get_menu_item_sys, create_menu_item_sys,
 from order.order_sys import get_orders_sys, get_order_sys, update_order_sys, create_order_sys, delete_order_sys
 from coupons.coupons_sys import create_coupon_sys, get_user_coupons_sys, delete_coupon_sys, get_all_coupons_sys, update_coupon_sys, get_coupon_sys, bind_coupon_sys, create_admin_coupon_sys
 from payment_api import payment_bp
+from line_api import line_bp
 from flask_cors import CORS
 
 # 載入 .env 檔案
@@ -28,6 +29,7 @@ load_dotenv()
 mongo_uri = os.getenv('MONGO_URI')
 database_name = os.getenv('DATABASE_NAME')
 token = os.getenv('TOKEN')
+flask_secret_key = os.getenv('FLASK_SECRET_KEY')
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -38,7 +40,14 @@ jwt = JWTManager(app)
 blacklist = set()
 blacklisted_tokens = set()
 
+# 從環境變數中設置 secret_key，secret_key 用於 session 加密
+app.secret_key = flask_secret_key
+if not app.secret_key:
+    raise ValueError("FLASK_SECRET_KEY 未設置")
+
+# 註冊藍圖
 app.register_blueprint(payment_bp, url_prefix='/payment')
+app.register_blueprint(line_bp, url_prefix='/line')
 
 def is_valid_email(email):
     email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"  #check email 格式是否正確
