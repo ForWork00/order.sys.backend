@@ -21,6 +21,7 @@ from coupons.coupons_sys import create_coupon_sys, get_user_coupons_sys, delete_
 from payment_api import payment_bp
 from line_api import line_bp
 from flask_cors import CORS
+from waiting.waiting_system import take_queue, cancel_queue, call_specific_queue, auto_call_queue, get_queue_info
 
 # 載入 .env 檔案
 load_dotenv()
@@ -40,10 +41,10 @@ jwt = JWTManager(app)
 blacklist = set()
 blacklisted_tokens = set()
 
-# 從環境變數中設置 secret_key，secret_key 用於 session 加密
-app.secret_key = flask_secret_key
-if not app.secret_key:
-    raise ValueError("FLASK_SECRET_KEY 未設置")
+# # 從環境變數中設置 secret_key，secret_key 用於 session 加密
+# app.secret_key = flask_secret_key
+# if not app.secret_key:
+#     raise ValueError("FLASK_SECRET_KEY 未設置")
 
 # 註冊藍圖
 app.register_blueprint(payment_bp, url_prefix='/payment')
@@ -532,6 +533,28 @@ def logout():
     blacklisted_tokens_collection.insert_one({"jti":jti})
     return jsonify({"message":"Logged out successfully"}), 200
 
+# 候位系統api
+# -----------------------------------------------------
+#抽取候位號碼
+@app.route("/queue/take", methods=["POST"])
+def queue_take():
+    return take_queue()
+#取消候位號碼
+@app.route("/queue/cancel/<int:queue_number>", methods=["DELETE"])
+def queue_cancel(queue_number):
+    return cancel_queue(queue_number)
+#指定叫號
+@app.route("/queue/call/<int:queue_number>", methods=["POST"])
+def queue_call(queue_number):
+    return call_specific_queue(queue_number)
+#自動叫下一個候位號碼
+@app.route("/queue/auto-call", methods=["POST"])
+def queue_auto_call():
+    return auto_call_queue()
+#取得候位資訊
+@app.route("/queue/info", methods=["GET"])
+def queue_info():
+    return get_queue_info()
 
 
 if __name__ == "__main__":
