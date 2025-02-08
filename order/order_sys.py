@@ -119,31 +119,50 @@ def create_order_sys():
 
     # 查詢菜單項目
     menu_item_ids = [item["menu_item_id"] for item in items]
-    menu_items = list(menu_collection.find({"_id": {"$in": menu_item_ids}}))
+    menu_items = {item["_id"]: item for item in menu_collection.find({"_id": {"$in": menu_item_ids}})}
 
-    found_ids = {item["_id"] for item in menu_items}
-    invalid_ids = [menu_id for menu_id in menu_item_ids if menu_id not in found_ids]
-
+    invalid_ids = [menu_id for menu_id in menu_item_ids if menu_id not in menu_items]
     if invalid_ids:
         return jsonify({"error": "Some menu items are invalid", "invalid_ids": invalid_ids}), 400
 
     # **計算總價**
-    order_items = []
+    order_items_dict = {}  # 用來合併相同菜單項目 & 相同備註的品項
     total_price = 0
 
-    for item in menu_items:
-        quantity = next((order_item["quantity"] for order_item in items if order_item["menu_item_id"] == item["_id"]), 1)
-        price = item["price"]
+    for order_item_data in items:
+        menu_item_id = order_item_data["menu_item_id"]
+        quantity = order_item_data.get("quantity", 1)
+        note = order_item_data.get("note", "")  # 預設為空字串
+
+        # 確保這個 `menu_item_id` 存在
+        if menu_item_id not in menu_items:
+            continue
+
+        menu_item = menu_items[menu_item_id]
+        price = menu_item["price"]
         total = price * quantity
 
-        order_items.append({
-            "id": item["_id"],
-            "name": item["name"],
-            "price": price,
-            "quantity": quantity,
-            "total": total,
-        })
+        # 生成合併的 key (menu_item_id + note)
+        key = f"{menu_item_id}::{note}"
+
+        # 若相同品項 & 備註已存在，則合併數量
+        if key in order_items_dict:
+            order_items_dict[key]["quantity"] += quantity
+            order_items_dict[key]["total"] += total
+        else:
+            order_items_dict[key] = {
+                "id": menu_item["_id"],
+                "name": menu_item["name"],
+                "price": price,
+                "quantity": quantity,
+                "note": note,
+                "total": total,
+            }
+
         total_price += total
+
+    # 轉換 `order_items_dict` 為 `order_items` 列表
+    order_items = list(order_items_dict.values())
 
     # 確保折扣金額不超過訂單總額
     discount_amount = min(discount_amount, total_price)
