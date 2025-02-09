@@ -12,7 +12,7 @@ def generate_coupon_code():
     return "COUP" + str(random.randint(100000, 999999))
 
 def get_user_coupons_sys(user_id):
-    """獲取會員所有未使用的優惠券"""
+    """獲取會員所有的優惠券"""
     coupons = list(coupons_collection.find({"user_id": user_id}))
 
     if not coupons:
@@ -152,11 +152,17 @@ def create_admin_coupon_sys():
 
     data = request.json
     discount = data.get("discount")
-    expiration_date = data.get("expiration_date")
+    expiration_date_str = data.get("expiration_date")
 
     # 檢查必要欄位
     if not discount or not expiration_date:
         return jsonify({"error": "缺少必要欄位 (discount, expiration_date)"}), 400
+
+    try:
+        # 轉換 expiration_date 為 datetime.date 格式
+        expiration_date = datetime.strptime(expiration_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify({"error": "expiration_date 格式錯誤，應為 YYYY-MM-DD"}), 400
 
     # 產生優惠券代碼
     coupon_code = generate_coupon_code()

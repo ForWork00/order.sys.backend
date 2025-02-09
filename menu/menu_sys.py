@@ -1,11 +1,9 @@
-import os, random
-from dotenv import load_dotenv
+import random
 from flask import request, jsonify
 from datetime import datetime
 from mongoDB import get_menu_collection
 from func import upload_image_to_imgur, delete_image_to_imgur
 
-load_dotenv()
 
 menu_collection = get_menu_collection()
 
