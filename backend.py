@@ -41,10 +41,7 @@ jwt = JWTManager(app)
 blacklist = set()
 blacklisted_tokens = set()
 
-# # 從環境變數中設置 secret_key，secret_key 用於 session 加密
-# app.secret_key = flask_secret_key
-# if not app.secret_key:
-#     raise ValueError("FLASK_SECRET_KEY 未設置")
+
 
 # 註冊藍圖
 app.register_blueprint(payment_bp, url_prefix='/payment')

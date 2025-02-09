@@ -1,6 +1,10 @@
 from flask import Blueprint, jsonify, request, redirect, session, url_for
 import os
 import requests
+import jwt
+import datetime
+from mongoDB import find_user, create_user 
+
 
 # 建立 Blueprint
 line_bp = Blueprint('line', __name__)
@@ -10,6 +14,8 @@ LINE_CHANNEL_ID = os.getenv('LINE_CHANNEL_ID')
 LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
 LINE_CALLBACK_URI = os.getenv('LINE_CALLBACK_URI')
 
+# 用於簽名 JWT 的密鑰
+JWT_SECRET = os.getenv('JWT_SECRET')
 
 # 生成 LINE 登入 URL
 @line_bp.route('/login_url', methods=['GET'])
@@ -59,18 +65,40 @@ def line_callback():
     if not access_token:
         return jsonify({'error': '獲取 Token 失敗'}), 400
 
-    # 返回用戶token
+    # 返回用戶token和JWT
+    jwt_token = jwt.encode({
+        'access_token': access_token,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)  # 設定過期時間
+    }, JWT_SECRET, algorithm='HS256')
+
+    # 檢查用戶是否首次登入
+    user_id = token_data.get("user_id")  # 假設從 token_data 中獲取 user_id
+    user = find_user(user_id)
+    if not user:
+        # 首次登入，將 user_id 儲存至資料庫
+        create_user(user_id, token_data)  # 儲存用戶資料
+
     return jsonify({
-        "access_token": access_token
+        "access_token": access_token,
+        "jwt_token": jwt_token  
     })
 
-# 用戶資料頁面
+# 用戶資料
 @line_bp.route('/profile', methods=['GET'])
 def profile():
-    # 從前端的 headers 中獲取 access_token
-    access_token = request.headers.get('Authorization')
-    if not access_token:
-        return jsonify({'error': '缺少 Access Token'}), 401
+    # 從前端的 headers 中獲取 jwt_token
+    jwt_token = request.headers.get('Authorization')
+    if not jwt_token:
+        return jsonify({'error': '缺少 JWT Token'}), 401
+
+    try:
+        # 驗證 JWT Token
+        payload = jwt.decode(jwt_token, JWT_SECRET, algorithms=['HS256'])
+        access_token = payload['access_token']  # 從 JWT 中獲取 access_token
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'JWT Token 已過期'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': '無效的 JWT Token'}), 401
 
     # 獲取用戶資料
     profile_url = "https://api.line.me/v2/profile"
@@ -86,10 +114,4 @@ def profile():
     return jsonify({
         "user_profile": profile_data
     })
-
-# 登出
-@line_bp.route('/logout', methods=['GET'])
-def logout():
-    session.clear()
-    return redirect(url_for('line_login_url_generate'))
 

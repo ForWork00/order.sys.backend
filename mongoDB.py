@@ -96,3 +96,12 @@ def get_accounting():   # 取得所有會計項目
 def get_AccountHistory():   #取得會計寫入紀錄
     return db["AccountHistory"]
 
+
+# LINE使用者資料
+# ------------------------------------------------------
+def find_user(user_id):
+    return get_user_collection().find_one({"user_id": user_id})
+
+def create_user(user_id, profile_data):
+    get_user_collection().insert_one({"user_id": user_id, "profile": profile_data})
+
