@@ -99,9 +99,12 @@ def get_AccountHistory():   #取得會計寫入紀錄
 
 # LINE使用者資料
 # ------------------------------------------------------
-def find_user(user_id):
-    return get_user_collection().find_one({"user_id": user_id})
+def get_line_user_collection():
+    return db["LineUsers"]
 
-def create_user(user_id, profile_data):
-    get_user_collection().insert_one({"user_id": user_id, "profile": profile_data})
+def find_line_user(user_id):
+    return get_line_user_collection().find_one({"user_id": user_id})
+
+def create_line_user(user_id, profile_data):
+    get_line_user_collection().insert_one({"user_id": user_id, "profile": profile_data})
 

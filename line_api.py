@@ -3,7 +3,7 @@ import os
 import requests
 import jwt
 import datetime
-from mongoDB import find_user, create_user 
+from mongoDB import find_line_user, create_line_user
 
 
 # 建立 Blueprint
@@ -65,18 +65,33 @@ def line_callback():
     if not access_token:
         return jsonify({'error': '獲取 Token 失敗'}), 400
 
+    # 獲取用戶資料以取得 user_id
+    profile_url = "https://api.line.me/v2/profile"
+    profile_headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    profile_response = requests.get(profile_url, headers=profile_headers)
+    if profile_response.status_code != 200:
+        return jsonify({'error': '獲取用戶資料失敗', 'details': profile_response.text}), 400
+
+    profile_data = profile_response.json()
+    user_id = profile_data.get("userId")  # 根據 LINE API，userId 是大寫的
+
+    if not user_id:
+        return jsonify({'error': '無法獲取 user_id'}), 400
+
     # 返回用戶token和JWT
     jwt_token = jwt.encode({
         'access_token': access_token,
+        'user_id': user_id,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)  # 設定過期時間
     }, JWT_SECRET, algorithm='HS256')
 
     # 檢查用戶是否首次登入
-    user_id = token_data.get("user_id")  # 假設從 token_data 中獲取 user_id
-    user = find_user(user_id)
+    user = find_line_user(user_id)
     if not user:
         # 首次登入，將 user_id 儲存至資料庫
-        create_user(user_id, token_data)  # 儲存用戶資料
+        create_line_user(user_id, profile_data)  # 儲存用戶資料
 
     return jsonify({
         "access_token": access_token,
