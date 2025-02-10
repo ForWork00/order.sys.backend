@@ -1,7 +1,7 @@
-from flask import request, jsonify
+from flask import request, jsonify, send_file
 from datetime import datetime
 from mongoDB import get_order_collection, get_menu_collection, get_user_collection, get_coupons_collection
-from func import generate_order_id
+from func import generate_order_id, generate_qr_code
 
 
 menu_collection = get_menu_collection()
@@ -30,9 +30,9 @@ def get_order_sys(order_id):
     return jsonify(order), 200
 
 def update_order_sys(order_id):
-    """修改訂單資訊，並在訂單完成後回饋點數"""
+    """修改訂單資訊，並在訂單完成後回饋點數，或在取消時恢復優惠券"""
     data = request.json
-    allowed_statuses = ["pending", "completed", "canceled"]  # 允許的狀態
+    allowed_statuses = ["completed", "canceled"]  # 允許的狀態
     update_fields = {}
 
     # 查找訂單
@@ -83,6 +83,17 @@ def update_order_sys(order_id):
             update_fields["updated_at"] = datetime.now()
             order_collection.update_one({"_id": order_id}, {"$set": update_fields})
             return jsonify({"message": "Order completed"}), 200
+        
+        # 訂單取消邏輯
+        elif new_status == "canceled":
+            # 若訂單使用了優惠券，恢復優惠券狀態為 "active"
+            if coupon_code and coupon_code.lower() != "none":
+                coupons_collection.update_one({"_id": coupon_code}, {"$set": {"status": "active"}})
+
+            update_fields["updated_at"] = datetime.now()
+            order_collection.update_one({"_id": order_id}, {"$set": update_fields})
+            return jsonify({"message": "Order canceled"}), 200
+
 
     # 如果沒有更新任何欄位
     return jsonify({"error": "No valid fields to update"}), 400
@@ -93,9 +104,13 @@ def create_order_sys():
     user_id = data.get("user_id")
     items = data.get("items")  
     coupon_code = data.get("coupon_code")  # 用戶輸入的優惠券
+    payment_method = data.get("payment_method")  # 付款方式: 'cash' 或 'online'
 
     if not items or not isinstance(items, list):
         return jsonify({"error": "items is required and must be a list"}), 400
+
+    if payment_method not in ["cash", "online"]:
+        return jsonify({"error": "Invalid payment_method. Allowed values are 'cash' or 'online'"}), 400
 
     # 確認 user_id 是否有效
     user_data = None
@@ -181,7 +196,8 @@ def create_order_sys():
         "discount_amount": int(discount_amount),  # 折扣金額
         "type": int(order_type),  
         "coupon_code": str(coupon_code if discount_amount > 0 else None),  # 記錄使用的優惠券
-        "status": "pending",  
+        "status": "pending",
+        "payment_method": payment_method,  # 記錄付款方式  
         "created_at": now,
         "updated_at": now,
     }
@@ -194,8 +210,16 @@ def create_order_sys():
             coupons_collection.update_one({"_id": coupon_code}, {"$set": {"status": "used"}})
     except Exception as e:
         return jsonify({"error": "Failed to create order", "details": str(e)}), 500
+    
+    # 現場付款才回傳 QR Code
+    if payment_method == "cash":
+        qr_code_image = generate_qr_code(order_id)
+        return send_file(qr_code_image, mimetype="image/png")
 
-    return jsonify({"message": "Order created successfully", "order": order}), 201
+    return jsonify({
+        "message": "Order created successfully",
+        "order": order
+    }), 201
 
 def delete_order_sys(order_id):
     """刪除訂單"""
