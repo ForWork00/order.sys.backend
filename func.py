@@ -1,6 +1,7 @@
 import uuid, io, openpyxl, matplotlib, os, requests
 import pandas as pd
 import matplotlib.pyplot as plt
+import qrcode
 from io import BytesIO
 from datetime import datetime
 from mongoDB import get_user_collection
@@ -149,3 +150,12 @@ def delete_image_to_imgur(imgur_deletehash):
         return {"success": True}
     else:
         return {"success": False, "error": response.json()}
+
+
+def generate_qr_code(order_id):
+    """ 生成 QR Code 並直接回傳圖片檔案 """
+    qr = qrcode.make(order_id)  # 生成 QR Code
+    img_io = io.BytesIO()  # 建立記憶體中的檔案
+    qr.save(img_io, format="PNG")  # 儲存為 PNG 格式
+    img_io.seek(0)  # 將檔案指標移到開頭
+    return img_io  # 回傳圖片資料
