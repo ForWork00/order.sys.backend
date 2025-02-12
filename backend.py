@@ -1,16 +1,16 @@
 from datetime import datetime
 import json
-from bson import ObjectId
-from flask import Flask, Response, request, jsonify, send_file
+from bson import ObjectId # type: ignore
+from flask import Flask, Response, request, jsonify, send_file # type: ignore
 import os, re, time, subprocess, logging
-import requests
+import requests # type: ignore
 from datetime import datetime, timezone, timedelta
-from flask_bcrypt import Bcrypt
+from flask_bcrypt import Bcrypt # type: ignore
 from config import jwt_config
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt # type: ignore
 from mongoDB import get_user_collection, user_find, create_date_id, get_revenues, get_expenses, insert_expense, del_all_coll, blacklisted_tokens_collection, backstage_user, get_user_collection # 從 mongoDB.py 導入
 from func import create_uuid, generate_trend_chart, export_to_excel, total, format_user_data
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 from accounting.balance_sheet import balance_sheet,balance_sheet_save
 from accounting.cash_flow_statement import Cash_Flow_Statement, save_cash_flow_statement
 from accounting.income_statement import get_income_statement, save_income_statement
@@ -20,7 +20,7 @@ from order.order_sys import get_orders_sys, get_order_sys, update_order_sys, cre
 from coupons.coupons_sys import create_coupon_sys, get_user_coupons_sys, delete_coupon_sys, get_all_coupons_sys, update_coupon_sys, get_coupon_sys, bind_coupon_sys, create_admin_coupon_sys
 from payment_api import payment_bp
 from line_api import line_bp
-from flask_cors import CORS
+from flask_cors import CORS # type: ignore
 from waiting.waiting_system import take_queue, cancel_queue, call_specific_queue, auto_call_queue, get_queue_info
 
 # 載入 .env 檔案
