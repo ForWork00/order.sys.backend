@@ -94,7 +94,7 @@ def create_payment_apple_pay():
             'TradeDesc': '訂單測試',
             'ItemName': item_name, # 前端傳入的ItemName
             'ReturnURL': f"{os.getenv('ORDER_SYS_URL')}/payment/return_url",
-            'ChoosePayment': 'Apple Pay',
+            'ChoosePayment': 'ApplePay',
             'ClientBackURL': f"{os.getenv('ORDER_SYS_URL')}/payment/client_back_url",
             'OrderResultURL': f"{os.getenv('ORDER_SYS_URL')}/payment/order_result_url",
             'NeedExtraPaidInfo': 'Y',
