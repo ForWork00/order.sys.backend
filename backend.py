@@ -22,6 +22,7 @@ from payment_api import payment_bp
 from line_api import line_bp
 from flask_cors import CORS # type: ignore
 from waiting.waiting_system import take_queue, cancel_queue, call_specific_queue, auto_call_queue, get_queue_info
+from reservation.reservation_sys import set_reservation_slots_sys, add_reservation_sys, get_reservations_sys, cancel_reservation_sys, get_all_reservations_sys, get_today_reservations_sys, delete_reservation_sys, get_reservations_by_date_sys
 
 # 載入 .env 檔案
 load_dotenv()
@@ -557,6 +558,47 @@ def queue_auto_call():
 def queue_info():
     return get_queue_info()
 
+# 定位系統api
+# -----------------------------------------------------
+@app.route("/set_reservation_slots", methods=["POST"])
+def reservation_slots():
+    """店家設定時段、桌數與每桌人數"""
+    return set_reservation_slots_sys()
+ 
+@app.route("/reservations", methods=["POST"])
+def add_reservation():
+    """新增預約"""
+    return add_reservation_sys()
+   
+@app.route("/reservations", methods=["GET"])
+def get_reservations():
+    """電話查詢預約可模糊查詢"""
+    return get_reservations_sys()
+
+@app.route("/reservations", methods=["PUT"])
+def cancel_reservation():
+    """會員取消預約"""
+    return cancel_reservation_sys()
+
+@app.route("/reservations/all", methods=["GET"])
+def get_all_reservations():
+    """查詢所有預約"""
+    return get_all_reservations_sys()
+
+@app.route("/reservations/date", methods=["GET"])
+def get_reservations_by_date():
+    """根據指定日期查詢預約"""
+    return get_reservations_by_date_sys()
+
+@app.route("/reservations/today", methods=["GET"])
+def get_today_reservations():
+    """查詢當天所有預約"""
+    return get_today_reservations_sys()
+
+@app.route("/reservations/<reservation_id>", methods=["DELETE"])
+def delete_reservation(reservation_id):
+    """刪除單筆預約"""
+    return delete_reservation_sys(reservation_id)
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=False)

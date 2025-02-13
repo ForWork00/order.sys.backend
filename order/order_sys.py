@@ -40,6 +40,20 @@ def update_order_sys(order_id):
     if not order:
         return jsonify({"error": "Order not found"}), 404
 
+    # 檢查訂單是否已完成
+    if order.get("status") == "completed":
+        return jsonify({"error": "Cannot modify a completed order"}), 400
+
+    if "user_id" in data:
+        new_user_id = data["user_id"]
+
+        if order.get("user_id", "none").lower() != "none":
+            return jsonify({"error": "Cannot modify user_id. Order already has a valid user."}), 400
+
+        # 如果原來的 user_id 是 'none'，允許更新
+        update_fields["user_id"] = new_user_id
+
+
     if "status" in data:
         new_status = data["status"]
         if new_status not in allowed_statuses:
@@ -79,7 +93,7 @@ def update_order_sys(order_id):
                             "reward_points": reward_points
                         }), 200
 
-            # **會員使用優惠券 → 只顯示 "Order completed"**
+            # 會員使用優惠券 → 只顯示 "Order completed"
             update_fields["updated_at"] = datetime.now()
             order_collection.update_one({"_id": order_id}, {"$set": update_fields})
             return jsonify({"message": "Order completed"}), 200
@@ -93,8 +107,7 @@ def update_order_sys(order_id):
             update_fields["updated_at"] = datetime.now()
             order_collection.update_one({"_id": order_id}, {"$set": update_fields})
             return jsonify({"message": "Order canceled"}), 200
-
-
+        
     # 如果沒有更新任何欄位
     return jsonify({"error": "No valid fields to update"}), 400
 
