@@ -48,6 +48,15 @@ def get_coupons_collection():
     """取得 Coupons 集合"""
     return db["Coupons"]
 
+# 定位系統
+def get_reservations_collection():
+    """取得 Reservations 集合"""
+    return db["Reservations"]
+
+def reservation_settings_collection():
+    """取得 Reservations_settings 集合"""
+    return db["reservation_settings"]
+
 """ 修改db當中Expenses的id """
 expense_collection=db["Expenses"]
 def create_date_id(date_prefix:str)->str:

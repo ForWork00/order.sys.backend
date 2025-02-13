@@ -8,7 +8,7 @@ users_collection = get_user_collection()
 coupons_collection = get_coupons_collection()
 
 def generate_coupon_code():
-    """生成 8 位數的隨機優惠券碼"""
+    """生成 10 位數的隨機優惠券碼"""
     return "COUP" + str(random.randint(100000, 999999))
 
 def get_user_coupons_sys(user_id):
@@ -155,12 +155,12 @@ def create_admin_coupon_sys():
     expiration_date_str = data.get("expiration_date")
 
     # 檢查必要欄位
-    if not discount or not expiration_date:
+    if not discount or not expiration_date_str:
         return jsonify({"error": "缺少必要欄位 (discount, expiration_date)"}), 400
 
     try:
-        # 轉換 expiration_date 為 datetime.date 格式
-        expiration_date = datetime.strptime(expiration_date_str, "%Y-%m-%d").date()
+        # 轉換 expiration_date 為 datetime.datetime 格式（帶時間部分）
+        expiration_date = datetime.strptime(expiration_date_str, "%Y-%m-%d")
     except ValueError:
         return jsonify({"error": "expiration_date 格式錯誤，應為 YYYY-MM-DD"}), 400
 
@@ -175,7 +175,7 @@ def create_admin_coupon_sys():
         "cost": 0,  # 預設為 0
         "status": "active",
         "created_at": datetime.now(),
-        "expiration_date": datetime.strptime(expiration_date, "%Y-%m-%d")
+        "expiration_date": expiration_date
     }
 
     # 插入優惠券到資料庫
