@@ -13,7 +13,7 @@ from func import create_uuid, generate_trend_chart, export_to_excel, total, form
 from dotenv import load_dotenv # type: ignore
 from accounting.balance_sheet import balance_sheet,balance_sheet_save
 from accounting.cash_flow_statement import Cash_Flow_Statement, save_cash_flow_statement
-from accounting.income_statement import get_income_statement, save_income_statement
+from accounting.income_statement import get_income_statement, save_income_statement_to_excel
 from accounting.account_function import get_history, add_entry, set_opening_balance
 from menu.menu_sys import get_menu_sys, get_menu_item_sys, create_menu_item_sys, delete_menu_item_sys, update_menu_item_sys
 from order.order_sys import get_orders_sys, get_order_sys, update_order_sys, create_order_sys, delete_order_sys
@@ -391,7 +391,24 @@ def fetch_income_statement():
 #損益表導出excel
 @app.route('/accounting/income_statement/save', methods=["POST"])
 def download_income_statement():
-    return save_income_statement()
+    try:
+        response = get_income_statement()  # 獲取損益表資料
+        
+        if isinstance(response, dict) and "error" in response:
+            return jsonify(response), 500  # 如果出錯則回傳錯誤信息
+        
+        # 保存損益表至 Excel，並獲得 BytesIO 物件
+        excel_file = save_income_statement_to_excel(response)
+        
+        # 使用 send_file 將 Excel 檔案返回給客戶端
+        return send_file(
+            excel_file,
+            as_attachment=True,
+            download_name="損益表.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"  
+        )   
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 #資產負債表
 @app.route("/accounting/balance_sheet", methods=["GET"])

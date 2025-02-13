@@ -4,7 +4,7 @@ from flask import jsonify
 from dotenv import load_dotenv
 from mongoDB import get_accounting, get_AccountHistory  # 導入資料庫集合
 import os
-
+import io
 load_dotenv()
 
 def get_income_statement():
@@ -26,8 +26,8 @@ def get_income_statement():
             "營業收入": [],
             "營業成本": [],
             "營業費用": [],
-            "業外收入": [],
-            "業外支出": [],
+            "營業外收入": [],
+            "營業外支出": [],
             "所得稅": []
         }
 
@@ -74,13 +74,13 @@ def get_income_statement():
                         elif first_digit == "7":  # 業外收入或業外支出
                             second_digit = account_code[1] if len(account_code) > 1 else ""
                             if second_digit in "1234":  # 71~74 屬於業外收入
-                                income_statement["業外收入"].append({
+                                income_statement["營業外收入"].append({
                                     "科目": account_name,
                                     "代碼": account_code,
                                     "期末餘額": end_balance
                                 })
                             elif second_digit in "5678":  # 75~78 屬於業外支出
-                                income_statement["業外支出"].append({
+                                income_statement["營業外支出"].append({
                                     "科目": account_name,
                                     "代碼": account_code,
                                     "期末餘額": end_balance
@@ -99,9 +99,9 @@ def get_income_statement():
         income_statement["營業利潤"] = income_statement["毛利"] - sum(
             item["期末餘額"] for item in income_statement["營業費用"]
         )
-        income_statement["利潤總額"] = income_statement["營業利潤"] + sum(
-            item["期末餘額"] for item in income_statement["業外收入"]
-        ) - sum(item["期末餘額"] for item in income_statement["業外支出"])
+        income_statement["利潤總額"] = income_statement["營業利潤"] + sum( #這邊計算方式要再更改
+            item["期末餘額"] for item in income_statement["營業外收入"]
+        ) - sum(item["期末餘額"] for item in income_statement["營業外支出"])
         income_statement["淨利潤"] = income_statement["利潤總額"] - sum(
             item["期末餘額"] for item in income_statement["所得稅"]
         )
@@ -139,7 +139,7 @@ def save_income_statement_to_excel(data, file_name="損益表.xlsx"):
     忽略期初與期末都為 0 的科目。
     """
     excel_data = []
-    categories = ["營業收入", "業外收入", "營業成本", "營業費用", "業外支出", "所得稅"]
+    categories = ["營業收入", "營業外收入", "營業成本", "營業費用", "營業外支出", "所得稅"]
 
     # **將明細寫入 Excel**
     for category in categories:
@@ -163,8 +163,12 @@ def save_income_statement_to_excel(data, file_name="損益表.xlsx"):
                 "代碼": "",
                 "期末餘額": data[field]
             })
-
-    # 轉換 DataFrame 並保存
-    if excel_data:  # 確保不存入空檔案
+    
+    output = io.BytesIO()
+    if excel_data:
         df = pd.DataFrame(excel_data)
-        df.to_excel(file_name, index=False, encoding="utf-8")
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="損益表")
+            writer.sheets["損益表"].sheet_state = 'visible'  
+        output.seek(0)  
+    return output
