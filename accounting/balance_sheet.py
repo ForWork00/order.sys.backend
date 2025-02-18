@@ -1,19 +1,23 @@
 import json
 import pandas as pd
-from flask import jsonify
+from flask import jsonify, send_file
 from dotenv import load_dotenv
 from mongoDB import get_accounting, get_AccountHistory  # 導入資料庫集合
-import os
+import io
 
 load_dotenv()
 
-
 def balance_sheet():
     """
-    依據 IFRS 標準將科目分類為 流動資產、非流動資產、流動負債、非流動負債、權益。
+    依據 IFRS 標準將科目分類為：
+    - 流動資產（Current Assets）
+    - 非流動資產（Non-Current Assets）
+    - 流動負債（Current Liabilities）
+    - 非流動負債（Non-Current Liabilities）
+    - 權益（Equity）
     """
     try:
-        account_collection = get_accounting()  # 正確取得會計紀錄集合
+        account_collection = get_accounting()  # 取得會計紀錄
         data = list(account_collection.find())
     
         balance_sheet_data = {
@@ -102,10 +106,10 @@ def balance_sheet():
             balance_sheet_data["流動負債合計"] + balance_sheet_data["非流動負債合計"] + balance_sheet_data["權益合計"]
         )
 
-        return balance_sheet_data # 返回資產負債表數據
+        return balance_sheet_data  # 返回資產負債表數據
     except Exception as e:
         return {"error": str(e)}
-    
+
 def balance_sheet_save():
     """
     產生資產負債表，並存為 Excel。
@@ -123,8 +127,14 @@ def balance_sheet_save():
 
         if "error" in result:
             return jsonify(result), 500 
-        save_balance_sheet_to_excel(result)
-        return jsonify({"message": "資產負債表", "file": "資產負債表.xlsx"}), 200
+        
+        excel_file = save_balance_sheet_to_excel(result)  # 保存至 Excel 並獲得 BytesIO 物件
+        return send_file(
+            excel_file,
+            as_attachment=True,
+            download_name="資產負債表.xlsx",  # 設定下載文件名
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"  # 設定 MIME 類型
+        ), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -157,5 +167,11 @@ def save_balance_sheet_to_excel(data, file_name="資產負債表.xlsx"):
                 "期末餘額": data[category_total_key]
             })
 
+    # 將資料轉換為 DataFrame 並保存至 BytesIO
+    output = io.BytesIO()
     df = pd.DataFrame(excel_data)
-    df.to_excel(file_name, index=False, engine="openpyxl")
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="資產負債表")
+        writer.sheets["資產負債表"].sheet_state = 'visible'  # 設定工作表狀態為可見
+    output.seek(0)  # 將指標移回開頭
+    return output

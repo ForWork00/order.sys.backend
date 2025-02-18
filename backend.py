@@ -13,7 +13,7 @@ from func import create_uuid, generate_trend_chart, export_to_excel, total, form
 from dotenv import load_dotenv # type: ignore
 from accounting.balance_sheet import balance_sheet,balance_sheet_save
 from accounting.cash_flow_statement import Cash_Flow_Statement, save_cash_flow_statement
-from accounting.income_statement import get_income_statement, save_income_statement_to_excel
+from accounting.income_statement import get_income_statement, save_income_statement
 from accounting.account_function import get_history, add_entry, set_opening_balance
 from menu.menu_sys import get_menu_sys, get_menu_item_sys, create_menu_item_sys, delete_menu_item_sys, update_menu_item_sys
 from order.order_sys import get_orders_sys, get_order_sys, update_order_sys, create_order_sys, delete_order_sys
@@ -374,8 +374,6 @@ def bind_coupon():
 #現金流量表
 @app.route('/accounting/cash_flow_statement', methods=["GET"])
 def fetch_cash_flow_statement():
-    print("MONGO_URI:", os.getenv("MONGO_URI"))
-    print("DATABASE_NAME:", os.getenv("DATABASE_NAME"))
     return Cash_Flow_Statement()
 
  #現金流量表導出excel   
@@ -391,33 +389,16 @@ def fetch_income_statement():
 #損益表導出excel
 @app.route('/accounting/income_statement/save', methods=["POST"])
 def download_income_statement():
-    try:
-        response = get_income_statement()  # 獲取損益表資料
-        
-        if isinstance(response, dict) and "error" in response:
-            return jsonify(response), 500  # 如果出錯則回傳錯誤信息
-        
-        # 保存損益表至 Excel，並獲得 BytesIO 物件
-        excel_file = save_income_statement_to_excel(response)
-        
-        # 使用 send_file 將 Excel 檔案返回給客戶端
-        return send_file(
-            excel_file,
-            as_attachment=True,
-            download_name="損益表.xlsx",
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"  
-        )   
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return save_income_statement()
 
 #資產負債表
 @app.route("/accounting/balance_sheet", methods=["GET"])
-def get_balance_sheet():
+def fetch_balance_sheet():
     return balance_sheet()
 
 #資產負債表導出excel
 @app.route("/accounting/balance_sheet/save", methods=["POST"])
-def save_balance_sheet():
+def download_balance_sheet():
     return balance_sheet_save()
 
 #記帳歷史紀錄
